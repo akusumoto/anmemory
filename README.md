@@ -421,4 +421,34 @@ npm run dev
 
 SecretsとPrivate R2 Bucketを準備してデプロイした後、同じボタンで本番Bindingを確認する。エラー時もObject Keyや内部エラーは画面・APIレスポンスへ返さない。
 
-次はPhase 3としてEnvelope Encryptionを実装する。
+## 18. Phase 3: Envelope Encryption（実装済み）
+
+音声とメタデータをR2へ平文保存しないため、次を実装している。
+
+- 音声Objectごとにランダムな256bit File Keyを生成
+- 音声とメタデータをFile KeyでAES-256-GCM暗号化
+- `ENCRYPTION_KEY` でFile KeyをAES-256-GCMラップ
+- 音声・メタデータ・File Keyごとに独立した96bit IVを生成
+- 用途別Additional Authenticated Dataによる暗号文の分離
+- 暗号化済みメタデータと音声を `ANMEM001` バイナリコンテナへ格納
+- 認証タグ不一致、暗号文改ざん、誤ったマスター鍵を拒否
+
+ログイン後に「暗号化を確認」を押すと、非機密のテスト音声とメタデータを暗号化してR2へ保存し、次を確認する。
+
+```text
+平文がR2 Objectに含まれない
+↓
+File Keyを復号できる
+↓
+音声とメタデータを復号できる
+↓
+元データと一致する
+↓
+テストObjectを削除できる
+```
+
+エラー時も鍵、Object Key、内部例外はAPIレスポンスへ返さない。
+
+Cloudflare Workersのメモリ上限は128MBである。Phase 4で最大50MBの実音声アップロードを接続するときは、リクエスト本体・暗号文・R2書き込み用コピーを同時に複数保持しない設計を追加検証する。
+
+次はPhase 4として、ブラウザ上のWAV解析とAAC-LC/M4A変換を実装する。

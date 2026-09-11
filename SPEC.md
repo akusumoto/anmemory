@@ -381,6 +381,8 @@ Master Encryption Key
 
 File Keyを平文で保存しない。
 
+音声、メタデータ、File Keyの暗号化ではそれぞれ別の96bit IVを生成し、用途を示すAdditional Authenticated Dataを付与する。IVは再利用しない。
+
 ---
 
 ## 14. R2 Object Key
@@ -638,9 +640,17 @@ wrappedKeyIv
 metadataIv
 ```
 
-必要であれば暗号化メタデータ自体をcustom metadataではなく、音声暗号文と一緒に独自バイナリフォーマットとして保存してもよい。
+第一版では、暗号化メタデータと音声暗号文を次の独自バイナリフォーマットで同一Objectへ保存する。
 
-第一版では実装容易性を優先する。
+```text
+ANMEM001                    8-byte magic
+headerLength                4-byte unsigned integer, big endian
+header                      UTF-8 JSON（非機密情報のみ）
+encryptedMetadata           AES-256-GCM ciphertext + authentication tag
+encryptedAudio              AES-256-GCM ciphertext + authentication tag
+```
+
+headerには `version`、`algorithm`、各IV、暗号化済みFile Key、各暗号文長だけを格納する。元ファイル名・録音日・タグ・メモなどは格納しない。
 
 ---
 
@@ -700,6 +710,22 @@ R2接続に失敗した場合:
 ```http
 503 Service Unavailable
 ```
+
+---
+
+### POST /api/encryption-check
+
+認証済みユーザーが暗号化・復号経路を確認するための管理用API。
+
+ランダムな識別文字列を含むテスト音声とメタデータをEnvelope Encryptionで暗号化し、R2への保存後も平文が含まれないことを確認する。その後、復号内容を検証してテストObjectを削除する。
+
+暗号化・復号・改ざん検証またはR2操作に失敗した場合:
+
+```http
+503 Service Unavailable
+```
+
+レスポンスには鍵、Object Key、内部エラーを含めない。
 
 ---
 

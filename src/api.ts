@@ -81,3 +81,16 @@ export async function checkStorage(): Promise<StorageCheckResponse> {
 
   return (await response.json()) as StorageCheckResponse
 }
+
+export async function checkEncryption(): Promise<StorageCheckResponse> {
+  const response = await fetch('/api/encryption-check', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, await readError(response))
+  }
+
+  return (await response.json()) as StorageCheckResponse
+}

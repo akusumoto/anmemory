@@ -1,5 +1,6 @@
 import type { AppEnv } from './env.ts'
 import { jsonResponse, unauthorized } from './http.ts'
+import { handleEncryptionCheck } from './routes/encryption.ts'
 import { handleLogin } from './routes/login.ts'
 import { handleLogout } from './routes/logout.ts'
 import { handleSession } from './routes/session.ts'
@@ -25,6 +26,9 @@ async function handleApi(request: Request, env: AppEnv): Promise<Response> {
 
   if (pathname === '/api/storage-check') {
     return handleStorageCheck(request, env)
+  }
+  if (pathname === '/api/encryption-check') {
+    return handleEncryptionCheck(request, env)
   }
 
   return jsonResponse({ error: 'Not Found' }, { status: 404 })

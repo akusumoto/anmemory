@@ -154,6 +154,10 @@ input {
   text-align: center;
 }
 
+.phase-card {
+  margin-top: 16px;
+}
+
 .empty-state h2 {
   margin: 16px 0 8px;
 }
