@@ -1,5 +1,21 @@
 # AnMemory
 
+## 現在の実装状況
+
+Phase 1〜4 を実装済みです。Phase 4 では、選択した WAV をサーバーへ送信せず、ブラウザ内で AAC-LC 96 kbps / Stereo の M4A に変換します。変換後のファイルはこの段階ではローカルに保持され、R2 へのアップロードは後続 Phase で接続します。
+
+対応する WAV は RIFF/WAVE の mono または stereo です。PCM 整数（8 / 16 / 24 / 32 bit）と IEEE Float（32 bit）を読み込み、mono は stereo に複製します。WAV 全体を一括で `ArrayBuffer` 化せず、`Blob.slice()` で 16,384 frame ずつ読み取ります。
+
+変換には WebCodecs の `AudioEncoder` を使用するため、画面表示時に AAC-LC (`mp4a.40.2`) の対応状況を確認します。非対応ブラウザでは変換を開始せず、対応ブラウザの利用を案内します。生成 M4A が 50 MiB を超える場合も保存処理へ進みません。
+
+ローカル確認:
+
+```powershell
+npm run dev
+```
+
+ログイン後に WAV を選択し、「M4Aへ変換」を押します。変換中は進捗とキャンセル操作を表示し、完了後は変換後サイズを確認できます。
+
 機密音声ファイルを安全に保存・再生するための個人用Webアプリケーション。
 
 このREADMEでは、AnMemoryの開発を開始するための初期セットアップ手順をまとめる。

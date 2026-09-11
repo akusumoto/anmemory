@@ -1,5 +1,14 @@
 # 機密音声保管サイト 設計書
 
+## Phase 4 実装注記
+
+- RIFF/WAVE の PCM 整数（8 / 16 / 24 / 32 bit）および IEEE Float（32 bit）を入力として扱う。
+- チャンネル数は mono / stereo に限定し、mono 入力は左右同一の stereo に変換する。
+- WAV のチャンク情報は必要な範囲だけ `Blob.slice()` で読み、PCM は 16,384 frame 単位でデコードして `AudioEncoder` へ渡す。元 WAV 全体は一括してメモリへ読み込まない。
+- AAC 設定は `codec: "mp4a.40.2"`、96 kbps、2 channel、`aac.format: "aac"` とする。
+- `AudioEncoder` が返す raw AAC access unit と AudioSpecificConfig を ISO BMFF の M4A コンテナへ格納する。
+- 生成後に 50 MiB 上限を検査する。Phase 4 単体では生成 Blob をブラウザ内に保持し、サーバーへの送信は行わない。
+
 ## 1. 目的
 
 個人用途で、機密性のある音声ファイルを安全にアップロード・保管・再生できるWebサイトを構築する。

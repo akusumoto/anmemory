@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { checkEncryption, checkStorage, getSession, logout } from './api'
 import Login from './components/Login'
+import Upload from './components/Upload'
 import './App.css'
 
 type AuthState = 'checking' | 'authenticated' | 'unauthenticated' | 'error'
@@ -101,6 +102,7 @@ function App() {
           ログアウト
         </button>
       </header>
+      <Upload />
       <section className="empty-state">
         <span className="lock-icon" aria-hidden="true">R2</span>
         <h2>ストレージ接続</h2>

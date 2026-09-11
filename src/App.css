@@ -154,6 +154,139 @@ input {
   text-align: center;
 }
 
+.upload-card {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.local-badge {
+  flex: none;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--accent);
+  background: #e4f1eb;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.file-picker {
+  min-height: 50px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #9eb4a8;
+  border-radius: 13px;
+  color: var(--accent);
+  background: #f7faf8;
+  cursor: pointer;
+}
+
+.file-picker:focus-within {
+  outline: 3px solid rgb(23 107 77 / 25%);
+  outline-offset: 2px;
+}
+
+.file-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.file-summary {
+  margin: 16px 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+
+.file-summary > strong {
+  display: block;
+  overflow: hidden;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-summary dl {
+  margin: 0;
+}
+
+.file-summary dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.file-summary dt {
+  color: var(--muted);
+}
+
+.file-summary dd {
+  margin: 0;
+  text-align: right;
+}
+
+.conversion-progress {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.conversion-progress > div {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.conversion-progress progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent);
+}
+
+.upload-error {
+  margin: 16px 0;
+}
+
+.conversion-result {
+  display: grid;
+  gap: 4px;
+  margin: 16px 0 0;
+  border-radius: 13px;
+  padding: 14px;
+  color: var(--accent-dark);
+  background: #eaf4ef;
+  font-size: 14px;
+}
+
+.conversion-result p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .phase-card {
   margin-top: 16px;
 }
