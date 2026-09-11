@@ -44,6 +44,20 @@ interface ParsedContainer {
   metadataCiphertext: Uint8Array
 }
 
+export interface EncryptedObjectLayout {
+  headerLength: number
+  metadataLength: number
+  metadataEnd: number
+  totalLength: number
+}
+
+export interface SealedAudioObjectParts {
+  prefix: Uint8Array
+  header: Uint8Array
+  metadataCiphertext: Uint8Array
+  audioCiphertext: Uint8Array
+}
+
 function concatenate(parts: Uint8Array[]): Uint8Array {
   const length = parts.reduce((total, part) => total + part.length, 0)
   const result = new Uint8Array(length)
@@ -55,6 +69,21 @@ function concatenate(parts: Uint8Array[]): Uint8Array {
   return result
 }
 
+function validDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/u)
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
+}
+
 function validMetadata(value: unknown): value is AudioMetadata {
   if (!value || typeof value !== 'object') {
     return false
@@ -63,7 +92,7 @@ function validMetadata(value: unknown): value is AudioMetadata {
   const metadata = value as Partial<AudioMetadata>
   return (
     typeof metadata.fileName === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/u.test(metadata.recordedDate ?? '') &&
+    validDateOnly(metadata.recordedDate) &&
     ['metadata', 'filename', 'upload'].includes(
       metadata.recordedDateSource ?? '',
     ) &&
@@ -110,23 +139,11 @@ function validHeader(value: unknown): value is ContainerHeader {
   }
 }
 
-function parseContainer(container: Uint8Array): ParsedContainer {
-  if (
-    container.length < PREFIX_BYTES ||
-    !MAGIC.every((byte, index) => container[index] === byte)
-  ) {
-    throw new Error('Invalid encrypted object')
-  }
-
-  const view = new DataView(
-    container.buffer,
-    container.byteOffset,
-    container.byteLength,
-  )
-  const headerLength = view.getUint32(MAGIC.length, false)
-  if (headerLength === 0 || headerLength > MAX_HEADER_BYTES) {
-    throw new Error('Invalid encrypted object')
-  }
+function parseHeader(container: Uint8Array): {
+  header: ContainerHeader
+  headerEnd: number
+} {
+  const headerLength = readEncryptedHeaderLength(container)
 
   const headerEnd = PREFIX_BYTES + headerLength
   if (headerEnd > container.length) {
@@ -147,24 +164,59 @@ function parseContainer(container: Uint8Array): ParsedContainer {
     throw new Error('Invalid encrypted object')
   }
 
-  const metadataEnd = headerEnd + parsedHeader.metadataLength
-  const audioEnd = metadataEnd + parsedHeader.audioLength
+  return { header: parsedHeader, headerEnd }
+}
+
+export function readEncryptedHeaderLength(prefix: Uint8Array): number {
+  if (
+    prefix.length < PREFIX_BYTES ||
+    !MAGIC.every((byte, index) => prefix[index] === byte)
+  ) {
+    throw new Error('Invalid encrypted object')
+  }
+  const headerLength = new DataView(
+    prefix.buffer,
+    prefix.byteOffset,
+    prefix.byteLength,
+  ).getUint32(MAGIC.length, false)
+  if (headerLength === 0 || headerLength > MAX_HEADER_BYTES) {
+    throw new Error('Invalid encrypted object')
+  }
+  return headerLength
+}
+
+export function readEncryptedObjectLayout(
+  containerHeader: Uint8Array,
+): EncryptedObjectLayout {
+  const { header, headerEnd } = parseHeader(containerHeader)
+  return {
+    headerLength: headerEnd - PREFIX_BYTES,
+    metadataLength: header.metadataLength,
+    metadataEnd: headerEnd + header.metadataLength,
+    totalLength: headerEnd + header.metadataLength + header.audioLength,
+  }
+}
+
+function parseContainer(container: Uint8Array): ParsedContainer {
+  const { header, headerEnd } = parseHeader(container)
+  const metadataEnd = headerEnd + header.metadataLength
+  const audioEnd = metadataEnd + header.audioLength
   if (audioEnd !== container.length) {
     throw new Error('Invalid encrypted object')
   }
 
   return {
-    header: parsedHeader,
+    header,
     metadataCiphertext: container.subarray(headerEnd, metadataEnd),
     audioCiphertext: container.subarray(metadataEnd, audioEnd),
   }
 }
 
-export async function sealAudioObject(
+export async function sealAudioObjectParts(
   audio: Uint8Array,
   metadata: AudioMetadata,
   encryptionSecret: string,
-): Promise<Uint8Array> {
+): Promise<SealedAudioObjectParts> {
   if (audio.length === 0 || audio.length > MAX_AUDIO_BYTES) {
     throw new Error('Invalid audio size')
   }
@@ -204,12 +256,81 @@ export async function sealAudioObject(
   prefix.set(MAGIC)
   new DataView(prefix.buffer).setUint32(MAGIC.length, headerBytes.length, false)
 
-  return concatenate([
+  return {
     prefix,
-    headerBytes,
+    header: headerBytes,
     metadataCiphertext,
     audioCiphertext,
+  }
+}
+
+export async function sealAudioObject(
+  audio: Uint8Array,
+  metadata: AudioMetadata,
+  encryptionSecret: string,
+): Promise<Uint8Array> {
+  const sealed = await sealAudioObjectParts(audio, metadata, encryptionSecret)
+  return concatenate([
+    sealed.prefix,
+    sealed.header,
+    sealed.metadataCiphertext,
+    sealed.audioCiphertext,
   ])
+}
+
+function parseMetadataBytes(metadataBytes: Uint8Array): AudioMetadata {
+  let metadata: unknown
+  try {
+    metadata = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(
+        metadataBytes,
+      ),
+    )
+  } catch {
+    throw new Error('Invalid encrypted metadata')
+  }
+  if (!validMetadata(metadata)) {
+    throw new Error('Invalid encrypted metadata')
+  }
+  return metadata
+}
+
+async function decryptMetadata(
+  parsed: ParsedContainer,
+  encryptionSecret: string,
+): Promise<AudioMetadata> {
+  const masterKey = await importMasterKey(encryptionSecret)
+  const fileKey = await unwrapFileKey(
+    decodeBase64Url(parsed.header.wrappedKey),
+    masterKey,
+    decodeBase64Url(parsed.header.wrappedKeyIv),
+  )
+  const metadataBytes = await decryptBytes(
+    parsed.metadataCiphertext,
+    fileKey,
+    decodeBase64Url(parsed.header.metadataIv),
+    'metadata',
+  )
+  return parseMetadataBytes(metadataBytes)
+}
+
+export async function openAudioMetadata(
+  containerPrefix: Uint8Array,
+  encryptionSecret: string,
+): Promise<AudioMetadata> {
+  const { header, headerEnd } = parseHeader(containerPrefix)
+  const metadataEnd = headerEnd + header.metadataLength
+  if (containerPrefix.length !== metadataEnd) {
+    throw new Error('Invalid encrypted object')
+  }
+  return decryptMetadata(
+    {
+      header,
+      metadataCiphertext: containerPrefix.subarray(headerEnd, metadataEnd),
+      audioCiphertext: new Uint8Array(),
+    },
+    encryptionSecret,
+  )
 }
 
 export async function openAudioObject(
@@ -239,19 +360,6 @@ export async function openAudioObject(
     ),
   ])
 
-  let metadata: unknown
-  try {
-    metadata = JSON.parse(
-      new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(
-        metadataBytes,
-      ),
-    )
-  } catch {
-    throw new Error('Invalid encrypted metadata')
-  }
-  if (!validMetadata(metadata)) {
-    throw new Error('Invalid encrypted metadata')
-  }
-
+  const metadata = parseMetadataBytes(metadataBytes)
   return { audio, metadata }
 }

@@ -2,8 +2,12 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   type AudioMetadata,
+  openAudioMetadata,
   openAudioObject,
+  readEncryptedHeaderLength,
+  readEncryptedObjectLayout,
   sealAudioObject,
+  sealAudioObjectParts,
 } from '../worker/encrypted-audio.ts'
 import { encodeBase64Url } from '../worker/encoding.ts'
 
@@ -41,6 +45,21 @@ test('each encryption uses fresh keys and IVs', async () => {
   const first = await sealAudioObject(audio, metadata, secret)
   const second = await sealAudioObject(audio, metadata, secret)
   assert.notDeepEqual(first, second)
+})
+
+test('metadata can be decrypted from the encrypted object prefix only', async () => {
+  const sealed = await sealAudioObjectParts(audio, metadata, secret)
+  const headerContainer = new Uint8Array(sealed.prefix.length + sealed.header.length)
+  headerContainer.set(sealed.prefix)
+  headerContainer.set(sealed.header, sealed.prefix.length)
+  assert.equal(readEncryptedHeaderLength(sealed.prefix), sealed.header.length)
+
+  const layout = readEncryptedObjectLayout(headerContainer)
+  const metadataPrefix = new Uint8Array(layout.metadataEnd)
+  metadataPrefix.set(headerContainer)
+  metadataPrefix.set(sealed.metadataCiphertext, headerContainer.length)
+  assert.equal(layout.totalLength, (await sealAudioObject(audio, metadata, secret)).length)
+  assert.deepEqual(await openAudioMetadata(metadataPrefix, secret), metadata)
 })
 
 test('tampering and the wrong master key are rejected', async () => {

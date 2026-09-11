@@ -1,6 +1,7 @@
 import type { AppEnv } from './env.ts'
 import { jsonResponse, unauthorized } from './http.ts'
 import { handleEncryptionCheck } from './routes/encryption.ts'
+import { handleAudio } from './routes/audio.ts'
 import { handleLogin } from './routes/login.ts'
 import { handleLogout } from './routes/logout.ts'
 import { handleSession } from './routes/session.ts'
@@ -29,6 +30,13 @@ async function handleApi(request: Request, env: AppEnv): Promise<Response> {
   }
   if (pathname === '/api/encryption-check') {
     return handleEncryptionCheck(request, env)
+  }
+  if (pathname === '/api/audio') {
+    return handleAudio(request, env)
+  }
+  const audioMatch = pathname.match(/^\/api\/audio\/([^/]+)$/u)
+  if (audioMatch) {
+    return handleAudio(request, env, audioMatch[1])
   }
 
   return jsonResponse({ error: 'Not Found' }, { status: 404 })

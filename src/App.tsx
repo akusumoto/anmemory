@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
-import { checkEncryption, checkStorage, getSession, logout } from './api'
+import { getSession, logout } from './api'
+import AudioList from './components/AudioList'
 import Login from './components/Login'
 import Upload from './components/Upload'
 import './App.css'
 
 type AuthState = 'checking' | 'authenticated' | 'unauthenticated' | 'error'
-type StorageState = 'idle' | 'checking' | 'available' | 'error'
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>('checking')
-  const [storageState, setStorageState] = useState<StorageState>('idle')
-  const [encryptionState, setEncryptionState] = useState<StorageState>('idle')
+  const [audioRefreshKey, setAudioRefreshKey] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -36,34 +35,6 @@ function App() {
       await logout()
     } finally {
       setAuthState('unauthenticated')
-    }
-  }
-
-  async function handleStorageCheck() {
-    if (storageState === 'checking') {
-      return
-    }
-
-    setStorageState('checking')
-    try {
-      await checkStorage()
-      setStorageState('available')
-    } catch {
-      setStorageState('error')
-    }
-  }
-
-  async function handleEncryptionCheck() {
-    if (encryptionState === 'checking') {
-      return
-    }
-
-    setEncryptionState('checking')
-    try {
-      await checkEncryption()
-      setEncryptionState('available')
-    } catch {
-      setEncryptionState('error')
     }
   }
 
@@ -102,57 +73,8 @@ function App() {
           ログアウト
         </button>
       </header>
-      <Upload />
-      <section className="empty-state">
-        <span className="lock-icon" aria-hidden="true">R2</span>
-        <h2>ストレージ接続</h2>
-        <p>
-          ランダムなテストデータを保存・取得・削除して、Private R2への接続を確認します。
-        </p>
-        <button
-          className="storage-check-button"
-          type="button"
-          onClick={handleStorageCheck}
-          disabled={storageState === 'checking'}
-        >
-          {storageState === 'checking' ? '確認中…' : 'R2接続を確認'}
-        </button>
-        <div className="storage-result" aria-live="polite">
-          {storageState === 'available' ? (
-            <p className="success-message">保存・取得・削除に成功しました。</p>
-          ) : null}
-          {storageState === 'error' ? (
-            <p className="form-error">
-              R2へ接続できませんでした。Bindingとバケット設定を確認してください。
-            </p>
-          ) : null}
-        </div>
-      </section>
-      <section className="empty-state phase-card">
-        <span className="lock-icon" aria-hidden="true">AES</span>
-        <h2>暗号化セルフチェック</h2>
-        <p>
-          音声とメタデータの暗号化、File Keyの保護、R2保存、復号、改ざん検出経路を確認します。
-        </p>
-        <button
-          className="storage-check-button"
-          type="button"
-          onClick={handleEncryptionCheck}
-          disabled={encryptionState === 'checking'}
-        >
-          {encryptionState === 'checking' ? '確認中…' : '暗号化を確認'}
-        </button>
-        <div className="storage-result" aria-live="polite">
-          {encryptionState === 'available' ? (
-            <p className="success-message">暗号化・復号・削除に成功しました。</p>
-          ) : null}
-          {encryptionState === 'error' ? (
-            <p className="form-error">
-              暗号化を確認できませんでした。ENCRYPTION_KEYとR2設定を確認してください。
-            </p>
-          ) : null}
-        </div>
-      </section>
+      <Upload onUploaded={() => setAudioRefreshKey((current) => current + 1)} />
+      <AudioList refreshKey={audioRefreshKey} />
     </main>
   )
 }

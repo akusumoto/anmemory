@@ -12,6 +12,7 @@ import {
   type RecordedDateSource,
 } from '../audio/metadata.ts'
 import { inspectWav, type WavInfo } from '../audio/wav.ts'
+import { uploadAudio } from '../api.ts'
 
 const dateSourceLabels: Record<RecordedDateSource, string> = {
   metadata: 'ファイル内メタデータ',
@@ -36,7 +37,11 @@ function formatDuration(seconds: number): string {
     : `${minutes}:${String(remaining).padStart(2, '0')}`
 }
 
-export default function Upload() {
+interface Props {
+  onUploaded: () => void
+}
+
+export default function Upload({ onUploaded }: Props) {
   const [supported, setSupported] = useState<boolean | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [wav, setWav] = useState<WavInfo | null>(null)
@@ -46,6 +51,8 @@ export default function Upload() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState('')
   const [isConverting, setIsConverting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [storedId, setStoredId] = useState<string | null>(null)
   const abortController = useRef<AbortController | null>(null)
   const fileSelectionVersion = useRef(0)
 
@@ -62,6 +69,7 @@ export default function Upload() {
     setMetadata(null)
     setTagText('')
     setResult(null)
+    setStoredId(null)
     setProgress(0)
     setError('')
     if (!selected) {
@@ -94,6 +102,7 @@ export default function Upload() {
     abortController.current = controller
     setIsConverting(true)
     setResult(null)
+    setStoredId(null)
     setProgress(0)
     setError('')
     try {
@@ -115,11 +124,26 @@ export default function Upload() {
     }
   }
 
+  async function handleUpload() {
+    if (!result || !metadata || isUploading || storedId) return
+    setIsUploading(true)
+    setError('')
+    try {
+      const id = await uploadAudio(result.blob, metadata)
+      setStoredId(id)
+      onUploaded()
+    } catch {
+      setError('暗号化して保存できませんでした。通信状態とR2設定を確認してください。')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   return (
     <section className="upload-card" aria-labelledby="upload-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Phase 4 + 5</p>
+          <p className="eyebrow">Encrypted upload</p>
           <h2 id="upload-title">WAVをM4Aへ変換</h2>
         </div>
         <span className="local-badge">端末内処理</span>
@@ -136,7 +160,7 @@ export default function Upload() {
         <input
           type="file"
           accept=".wav,audio/wav,audio/x-wav"
-          disabled={supported !== true || isConverting}
+          disabled={supported !== true || isConverting || isUploading}
           onChange={(event) => void handleFileChange(event.target.files?.[0])}
         />
       </label>
@@ -154,7 +178,10 @@ export default function Upload() {
       ) : null}
 
       {metadata ? (
-        <fieldset className="metadata-fields" disabled={isConverting}>
+        <fieldset
+          className="metadata-fields"
+          disabled={isConverting || isUploading || Boolean(storedId)}
+        >
           <legend>メタデータ</legend>
           <div className="recorded-date-row">
             <label>
@@ -220,7 +247,14 @@ export default function Upload() {
             <span>{metadata.recordedDate} / タグ {metadata.tags.length}件</span>
           ) : null}
           <p>元のWAVはサーバーへ送信されていません。</p>
+          {storedId ? <strong>暗号化してR2へ保存しました。</strong> : null}
         </div>
+      ) : null}
+
+      {result && metadata && !storedId ? (
+        <button type="button" onClick={() => void handleUpload()} disabled={isUploading}>
+          {isUploading ? '暗号化して保存中…' : '暗号化して保存'}
+        </button>
       ) : null}
 
       {file && wav && !isConverting && !result ? (

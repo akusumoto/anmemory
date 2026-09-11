@@ -18,6 +18,16 @@
 - タグはカンマ、読点、改行で分割し、空要素と重複を除去する。メモは自由入力とする。
 - `uploadedAt` はファイル選択時刻のISO 8601文字列として保持する。Phase 5 単体ではメタデータをサーバーへ送信しない。
 
+## Phase 6 実装注記
+
+- `POST /api/audio` は変換済みM4Aとメタデータをmultipart/form-dataで受信し、50 MiB上限と入力形式を検査後、Envelope Encryptionを適用して `audio/{uuid}.bin` へ保存する。
+- 暗号化コンテナはheader、暗号化メタデータ、暗号化音声をBlob partsとしてR2へ渡し、暗号文全体をさらに連結コピーしない。
+- `GET /api/audio` はR2 Range Readでprefix、header、暗号化メタデータだけを取得・復号する。音声暗号文は一覧取得時に読み込まない。
+- 一覧は `recordedDate DESC`、同日の `sequence ASC`、補助順として `uploadedAt DESC` で並べる。
+- `GET /api/audio/:id` は対象Objectを復号して `audio/mp4`、`Cache-Control: no-store` で返す。
+- `DELETE /api/audio/:id` は存在確認後に対象Objectを削除する。UIでは実行前に確認する。
+- 一覧・再生・削除APIを含むすべての `/api/audio*` は既存セッション認証後にのみ到達できる。
+
 ## 1. 目的
 
 個人用途で、機密性のある音声ファイルを安全にアップロード・保管・再生できるWebサイトを構築する。
