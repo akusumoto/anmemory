@@ -71,7 +71,7 @@ npm run dev
 
 表示されたローカルURLをブラウザで開き、初期React画面が表示されることを確認する。
 
-この段階では認証・R2・暗号化はまだ実装しない。
+初回起動前に、後述の手順でローカル開発用Secretsを設定する。
 
 ## 7. 設計書を配置
 
@@ -314,7 +314,7 @@ UI
 [ ] npm install が成功する
 [ ] npm run dev が成功する
 [ ] React画面がブラウザで開ける
-[ ] private_audio_design.md が配置されている
+[ ] SPEC.md が配置されている
 [ ] README.md が配置されている
 [ ] git status が正常に動く
 ```
@@ -343,4 +343,49 @@ git add .
 git commit -m "Initial AnMemory project"
 ```
 
-ここまで完了したら、`private_audio_design.md` をCodexに読ませ、Phase 1の認証実装から開始する。
+## 16. Phase 1: 認証（実装済み）
+
+次の機能を実装している。
+
+- PBKDF2-HMAC-SHA-256によるマスターパスワード検証
+- HMAC-SHA-256署名付きの1時間セッションCookie
+- `HttpOnly`、`Secure`、`SameSite=Strict`、`Path=/`
+- ログイン、セッション確認、ログアウトAPI
+- 同一IPの認証失敗を5回/60秒に制限するRate Limiting Binding
+- Workerを経由したStatic Assets配信
+
+### Secretsを生成する
+
+対話形式の生成コマンドを実行する。入力したパスワードは画面に表示されない。
+
+```powershell
+npm run setup:secrets
+```
+
+出力された3つの値をローカルでは `.dev.vars` に保存する。
+
+```dotenv
+MASTER_PASSWORD_VERIFIER=...
+SESSION_SECRET=...
+ENCRYPTION_KEY=...
+```
+
+`.dev.vars` はGit管理対象外である。本番環境では値をファイルへ置かず、各値を個別に登録する。
+
+```powershell
+npx wrangler secret put MASTER_PASSWORD_VERIFIER
+npx wrangler secret put SESSION_SECRET
+npx wrangler secret put ENCRYPTION_KEY
+```
+
+Rate Limiting BindingはCloudflare上で動作する。ローカル開発では回数制限が強制されないため、デプロイ前後に実環境でも確認する。`wrangler.jsonc` の `namespace_id` はCloudflareアカウント内で一意にし、既に `1001` を使用している場合は別の正整数へ変更する。
+
+### 検証コマンド
+
+```powershell
+npm test
+npm run lint
+npm run build
+```
+
+次はPhase 2としてPrivate R2 Bucketとの接続を実装する。

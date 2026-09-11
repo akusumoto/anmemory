@@ -1,147 +1,81 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import cloudflareLogo from './assets/cloudflare.svg'
-import heroImg from './assets/hero.png'
+import { useEffect, useState } from 'react'
+import { getSession, logout } from './api'
+import Login from './components/Login'
 import './App.css'
 
+type AuthState = 'checking' | 'authenticated' | 'unauthenticated' | 'error'
+
 function App() {
-  const [count, setCount] = useState(0)
-  const [name, setName] = useState('unknown')
+  const [authState, setAuthState] = useState<AuthState>('checking')
+
+  useEffect(() => {
+    let active = true
+    getSession()
+      .then((authenticated) => {
+        if (active) {
+          setAuthState(authenticated ? 'authenticated' : 'unauthenticated')
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAuthState('error')
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function handleLogout() {
+    try {
+      await logout()
+    } finally {
+      setAuthState('unauthenticated')
+    }
+  }
+
+  if (authState === 'checking') {
+    return (
+      <main className="status-layout" aria-live="polite">
+        <span className="spinner" aria-hidden="true" />
+        <p>セッションを確認しています…</p>
+      </main>
+    )
+  }
+
+  if (authState === 'error') {
+    return (
+      <main className="status-layout">
+        <p>サイトへ接続できませんでした。</p>
+        <button type="button" onClick={() => window.location.reload()}>
+          再読み込み
+        </button>
+      </main>
+    )
+  }
+
+  if (authState === 'unauthenticated') {
+    return <Login onAuthenticated={() => setAuthState('authenticated')} />
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <main className="app-shell">
+      <header className="app-header">
         <div>
-          <h1>Get started with Cloudflare</h1>
-          <p>
-            Edit <code>src/App.tsx</code> or <code>worker/index.ts</code> and save to test <code>HMR</code>
-          </p>
+          <p className="eyebrow">Private audio archive</p>
+          <h1>AnMemory</h1>
         </div>
-        <ul style={{ display: 'flex', gap: '1rem', listStyle: 'none', padding: 0 }}>
-          <li>
-            <button
-              className="counter"
-              onClick={() => setCount((count) => count + 1)}
-            >
-              Count is {count}
-            </button>
-          </li>
-          <li>
-          <button
-            className="counter"
-            onClick={() => {
-              fetch('/api/')
-                .then((res) => res.json())
-                .then((data) => setName(data.name))
-            }}
-            aria-label='get name'
-          >
-            Name from API is: {name}
-          </button>
-          </li>
-        </ul>
-
-
+        <button className="secondary-button" type="button" onClick={handleLogout}>
+          ログアウト
+        </button>
+      </header>
+      <section className="empty-state">
+        <span className="lock-icon" aria-hidden="true">✓</span>
+        <h2>ログインしました</h2>
+        <p>認証機能の準備ができました。音声保管機能は次の段階で追加します。</p>
       </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-            <li>
-              <a href="https://workers.cloudflare.com/" target="_blank">
-                <img className="button-icon" src={cloudflareLogo} alt="" />
-                Workers Docs
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 
