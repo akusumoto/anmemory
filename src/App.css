@@ -247,6 +247,92 @@ input {
   text-align: right;
 }
 
+.metadata-fields {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 14px;
+}
+
+.metadata-fields legend {
+  padding: 0 5px;
+  color: var(--accent-dark);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.metadata-fields label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.metadata-fields input,
+.metadata-fields textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #b7c7bf;
+  border-radius: 10px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: #fff;
+  font: inherit;
+  font-weight: 400;
+}
+
+.metadata-fields textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.metadata-fields input:focus,
+.metadata-fields textarea:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgb(23 107 77 / 16%);
+}
+
+.metadata-fields input[readonly] {
+  color: var(--muted);
+  background: #f4f7f5;
+}
+
+.metadata-fields small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.recorded-date-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.recorded-date-row small {
+  padding-bottom: 11px;
+  white-space: nowrap;
+}
+
+.metadata-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metadata-preview span {
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--accent-dark);
+  background: #eaf4ef;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .conversion-progress {
   display: grid;
   gap: 10px;
@@ -347,6 +433,14 @@ input {
   .auth-card {
     padding: 28px 20px 22px;
     border-radius: 18px;
+  }
+
+  .recorded-date-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recorded-date-row small {
+    padding-bottom: 0;
   }
 }
 

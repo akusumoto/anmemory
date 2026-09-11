@@ -9,6 +9,15 @@
 - `AudioEncoder` が返す raw AAC access unit と AudioSpecificConfig を ISO BMFF の M4A コンテナへ格納する。
 - 生成後に 50 MiB 上限を検査する。Phase 4 単体では生成 Blob をブラウザ内に保持し、サーバーへの送信は行わない。
 
+## Phase 5 実装注記
+
+- WAV内部の日付は BWF `bext` の OriginationDate と RIFF `LIST/INFO` の `ICRD` を対象とし、両方がある場合は `bext` を優先する。
+- 録音日は内部メタデータ、`rec_YYYYMMDD_N.wav` 形式のファイル名、ファイル選択日時の順で決定し、存在しない日付は採用しない。
+- ファイル名が想定形式に一致した場合は `N` を `sequence` として保持する。録音日が内部メタデータ由来でも連番はファイル名から取得する。
+- `durationSec` はWAVのframe数とsample rateから算出して整数秒へ丸める。
+- タグはカンマ、読点、改行で分割し、空要素と重複を除去する。メモは自由入力とする。
+- `uploadedAt` はファイル選択時刻のISO 8601文字列として保持する。Phase 5 単体ではメタデータをサーバーへ送信しない。
+
 ## 1. 目的
 
 個人用途で、機密性のある音声ファイルを安全にアップロード・保管・再生できるWebサイトを構築する。
