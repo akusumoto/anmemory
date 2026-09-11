@@ -6,6 +6,11 @@ interface ErrorResponse {
   error?: string
 }
 
+interface StorageCheckResponse {
+  ok: boolean
+  checkedAt: string
+}
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -62,4 +67,17 @@ export async function logout(): Promise<void> {
   if (!response.ok) {
     throw new ApiError(response.status, await readError(response))
   }
+}
+
+export async function checkStorage(): Promise<StorageCheckResponse> {
+  const response = await fetch('/api/storage-check', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, await readError(response))
+  }
+
+  return (await response.json()) as StorageCheckResponse
 }

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { getSession, logout } from './api'
+import { checkStorage, getSession, logout } from './api'
 import Login from './components/Login'
 import './App.css'
 
 type AuthState = 'checking' | 'authenticated' | 'unauthenticated' | 'error'
+type StorageState = 'idle' | 'checking' | 'available' | 'error'
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>('checking')
+  const [storageState, setStorageState] = useState<StorageState>('idle')
 
   useEffect(() => {
     let active = true
@@ -32,6 +34,20 @@ function App() {
       await logout()
     } finally {
       setAuthState('unauthenticated')
+    }
+  }
+
+  async function handleStorageCheck() {
+    if (storageState === 'checking') {
+      return
+    }
+
+    setStorageState('checking')
+    try {
+      await checkStorage()
+      setStorageState('available')
+    } catch {
+      setStorageState('error')
     }
   }
 
@@ -71,9 +87,29 @@ function App() {
         </button>
       </header>
       <section className="empty-state">
-        <span className="lock-icon" aria-hidden="true">✓</span>
-        <h2>ログインしました</h2>
-        <p>認証機能の準備ができました。音声保管機能は次の段階で追加します。</p>
+        <span className="lock-icon" aria-hidden="true">R2</span>
+        <h2>ストレージ接続</h2>
+        <p>
+          ランダムなテストデータを保存・取得・削除して、Private R2への接続を確認します。
+        </p>
+        <button
+          className="storage-check-button"
+          type="button"
+          onClick={handleStorageCheck}
+          disabled={storageState === 'checking'}
+        >
+          {storageState === 'checking' ? '確認中…' : 'R2接続を確認'}
+        </button>
+        <div className="storage-result" aria-live="polite">
+          {storageState === 'available' ? (
+            <p className="success-message">保存・取得・削除に成功しました。</p>
+          ) : null}
+          {storageState === 'error' ? (
+            <p className="form-error">
+              R2へ接続できませんでした。Bindingとバケット設定を確認してください。
+            </p>
+          ) : null}
+        </div>
       </section>
     </main>
   )

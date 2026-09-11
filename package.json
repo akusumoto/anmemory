@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types --test tests/auth.test.ts tests/session.test.ts",
+    "test": "node --experimental-strip-types --test tests/auth.test.ts tests/session.test.ts tests/r2.test.ts",
     "setup:secrets": "node scripts/generate-secrets.mjs",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",

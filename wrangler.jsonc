@@ -22,6 +22,16 @@
 			}
 		}
 	],
+	"r2_buckets": [
+		{
+			"binding": "AUDIO_BUCKET",
+			"bucket_name": "anmemory-audio"
+		},
+		{
+			"bucket_name": "anmemory-audio",
+			"binding": "anmemory_audio"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},

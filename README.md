@@ -388,4 +388,37 @@ npm run lint
 npm run build
 ```
 
-次はPhase 2としてPrivate R2 Bucketとの接続を実装する。
+## 17. Phase 2: Private R2接続（実装済み）
+
+`AUDIO_BUCKET` Bindingを通して、WorkerからR2 Objectの保存・取得・削除を行える。
+
+接続確認ではランダムな32バイトの非機密データだけを `system/storage-check/` 配下へ一時保存する。取得内容と削除結果を検証し、音声やメタデータを平文保存しない。
+
+### 本番バケットを作成する
+
+Cloudflareアカウントに `anmemory-audio` がまだ存在しない場合、一度だけ作成する。
+
+```powershell
+npx wrangler r2 bucket create anmemory-audio
+```
+
+R2の設定画面で次の両方を確認する。
+
+- Public Development URLが無効
+- Custom Domainが未接続
+
+R2バケットは明示的に公開しない限りPrivateだが、デプロイ前にも設定を確認する。
+
+### ローカル接続を確認する
+
+```powershell
+npm run dev
+```
+
+ログイン後に「R2接続を確認」を押す。ローカル開発ではCloudflare上の本番バケットではなく、`.wrangler/state` 内のローカルR2が使用される。テストObjectは確認処理内で削除される。
+
+### 本番接続を確認する
+
+SecretsとPrivate R2 Bucketを準備してデプロイした後、同じボタンで本番Bindingを確認する。エラー時もObject Keyや内部エラーは画面・APIレスポンスへ返さない。
+
+次はPhase 3としてEnvelope Encryptionを実装する。

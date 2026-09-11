@@ -172,7 +172,27 @@ input {
   border-radius: 50%;
   color: var(--accent);
   background: #e4f1eb;
+  font-size: 13px;
   font-weight: 900;
+}
+
+.storage-check-button {
+  margin-top: 24px;
+}
+
+.storage-result {
+  min-height: 24px;
+  margin-top: 16px;
+}
+
+.storage-result p {
+  margin: 0;
+}
+
+.success-message {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 @keyframes spin {

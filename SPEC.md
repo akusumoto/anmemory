@@ -679,6 +679,30 @@ Rate Limit超過:
 
 ---
 
+### POST /api/storage-check
+
+認証済みユーザーがPrivate R2との接続を確認するための管理用API。
+
+ランダムな非機密データを `system/storage-check/` 配下へ一時保存し、取得内容を検証してから必ず削除する。音声やメタデータは使用しない。
+
+処理:
+
+```text
+1. Session確認
+2. ランダムなテストデータをR2へ保存
+3. R2から取得して内容を検証
+4. テストObjectを削除
+5. 削除済みであることを確認
+```
+
+R2接続に失敗した場合:
+
+```http
+503 Service Unavailable
+```
+
+---
+
 ### GET /api/audio
 
 音声一覧を取得する。
@@ -930,7 +954,7 @@ private-audio/
   "r2_buckets": [
     {
       "binding": "AUDIO_BUCKET",
-      "bucket_name": "private-audio"
+      "bucket_name": "anmemory-audio"
     }
   ]
 }

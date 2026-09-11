@@ -3,6 +3,7 @@ import { jsonResponse, unauthorized } from './http.ts'
 import { handleLogin } from './routes/login.ts'
 import { handleLogout } from './routes/logout.ts'
 import { handleSession } from './routes/session.ts'
+import { handleStorageCheck } from './routes/storage.ts'
 import { isAuthenticated } from './session.ts'
 
 async function handleApi(request: Request, env: AppEnv): Promise<Response> {
@@ -20,6 +21,10 @@ async function handleApi(request: Request, env: AppEnv): Promise<Response> {
 
   if (!(await isAuthenticated(request, env.SESSION_SECRET))) {
     return unauthorized()
+  }
+
+  if (pathname === '/api/storage-check') {
+    return handleStorageCheck(request, env)
   }
 
   return jsonResponse({ error: 'Not Found' }, { status: 404 })
