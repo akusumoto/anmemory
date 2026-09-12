@@ -10,6 +10,7 @@ type AuthState = 'checking' | 'authenticated' | 'unauthenticated' | 'error'
 function App() {
   const [authState, setAuthState] = useState<AuthState>('checking')
   const [audioRefreshKey, setAudioRefreshKey] = useState(0)
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -69,12 +70,61 @@ function App() {
           <p className="eyebrow">Private audio archive</p>
           <h1>AnMemory</h1>
         </div>
-        <button className="secondary-button" type="button" onClick={handleLogout}>
-          ログアウト
-        </button>
+        <div className="app-header-actions">
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="アップロード"
+            title="アップロード"
+            onClick={() => setIsUploadOpen(true)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" />
+            </svg>
+          </button>
+          <button
+            className="secondary-button icon-button"
+            type="button"
+            aria-label="ログアウト"
+            title="ログアウト"
+            onClick={handleLogout}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 5H5v14h5m4-3 4-4-4-4m4 4H9" />
+            </svg>
+          </button>
+        </div>
       </header>
-      <Upload onUploaded={() => setAudioRefreshKey((current) => current + 1)} />
       <AudioList refreshKey={audioRefreshKey} />
+      {isUploadOpen ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={() => setIsUploadOpen(false)}
+        >
+          <div
+            className="upload-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upload-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              className="secondary-button dialog-close-button"
+              type="button"
+              onClick={() => setIsUploadOpen(false)}
+            >
+              閉じる
+            </button>
+            <Upload
+              onUploaded={() => {
+                setAudioRefreshKey((current) => current + 1)
+                setIsUploadOpen(false)
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }

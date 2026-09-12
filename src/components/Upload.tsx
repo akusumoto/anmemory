@@ -93,48 +93,42 @@ export default function Upload({ onUploaded }: Props) {
     }
   }
 
-  async function handleConvert() {
-    if (!file || !wav || isConverting) {
-      return
-    }
+  async function handleUpload() {
+    if (!file || !wav || !metadata || isConverting || isUploading || storedId) return
 
-    const controller = new AbortController()
-    abortController.current = controller
-    setIsConverting(true)
-    setResult(null)
-    setStoredId(null)
-    setProgress(0)
     setError('')
+    let converted = result
     try {
-      const converted = await convertWavToM4a(
-        file,
-        ({ percent }) => setProgress(percent),
-        controller.signal,
-      )
-      setResult(converted)
+      if (!converted) {
+        const controller = new AbortController()
+        abortController.current = controller
+        setIsConverting(true)
+        setProgress(0)
+        converted = await convertWavToM4a(
+          file,
+          ({ percent }) => setProgress(percent),
+          controller.signal,
+        )
+        setResult(converted)
+        abortController.current = null
+        setIsConverting(false)
+      }
+
+      setIsUploading(true)
+      const id = await uploadAudio(converted.blob, metadata)
+      setStoredId(id)
+      onUploaded()
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === 'AbortError') {
         setError('変換をキャンセルしました。')
-      } else {
+      } else if (isConverting || !converted) {
         setError(caught instanceof Error ? caught.message : '音声変換に失敗しました。')
+      } else {
+        setError('暗号化して保存できませんでした。通信状態とR2設定を確認してください。')
       }
     } finally {
       abortController.current = null
       setIsConverting(false)
-    }
-  }
-
-  async function handleUpload() {
-    if (!result || !metadata || isUploading || storedId) return
-    setIsUploading(true)
-    setError('')
-    try {
-      const id = await uploadAudio(result.blob, metadata)
-      setStoredId(id)
-      onUploaded()
-    } catch {
-      setError('暗号化して保存できませんでした。通信状態とR2設定を確認してください。')
-    } finally {
       setIsUploading(false)
     }
   }
@@ -142,11 +136,7 @@ export default function Upload({ onUploaded }: Props) {
   return (
     <section className="upload-card" aria-labelledby="upload-title">
       <div className="section-heading">
-        <div>
-          <p className="eyebrow">Encrypted upload</p>
-          <h2 id="upload-title">WAVをM4Aへ変換</h2>
-        </div>
-        <span className="local-badge">端末内処理</span>
+        <h2 id="upload-title">アップロード</h2>
       </div>
 
       {supported === false ? (
@@ -236,6 +226,10 @@ export default function Upload({ onUploaded }: Props) {
         </div>
       ) : null}
 
+      {isUploading ? (
+        <p className="upload-status" aria-live="polite">アップロード中…</p>
+      ) : null}
+
       {error ? <p className="form-error upload-error" role="alert">{error}</p> : null}
 
       {result ? (
@@ -251,15 +245,13 @@ export default function Upload({ onUploaded }: Props) {
         </div>
       ) : null}
 
-      {result && metadata && !storedId ? (
-        <button type="button" onClick={() => void handleUpload()} disabled={isUploading}>
-          {isUploading ? '暗号化して保存中…' : '暗号化して保存'}
-        </button>
-      ) : null}
-
-      {file && wav && !isConverting && !result ? (
-        <button type="button" onClick={() => void handleConvert()}>
-          M4Aへ変換
+      {file && wav && metadata && !storedId ? (
+        <button
+          type="button"
+          onClick={() => void handleUpload()}
+          disabled={isConverting || isUploading}
+        >
+          {isConverting ? '変換中…' : isUploading ? 'アップロード中…' : 'アップロード'}
         </button>
       ) : null}
     </section>

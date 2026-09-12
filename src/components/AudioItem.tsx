@@ -12,55 +12,53 @@ function formatDuration(seconds: number): string {
 
 interface Props {
   audio: AudioListItemData
-  isDeleting: boolean
   isLoading: boolean
   playbackUrl: string | null
-  onDelete: () => void
+  onEdit: () => void
   onPlay: () => void
 }
 
 export default function AudioItem({
   audio,
-  isDeleting,
   isLoading,
   playbackUrl,
-  onDelete,
+  onEdit,
   onPlay,
 }: Props) {
   return (
     <article className="audio-item">
       <div className="audio-item-heading">
-        <div>
-          <strong>{audio.fileName}</strong>
-          <span>{formatDuration(audio.durationSec)}</span>
-        </div>
-        {audio.sequence !== null ? <span className="sequence">#{audio.sequence}</span> : null}
+        <button
+          className="audio-play-button"
+          type="button"
+          aria-label={`${audio.fileName}を再生`}
+          title="再生"
+          onClick={onPlay}
+          disabled={isLoading}
+        >
+          {isLoading ? '…' : (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 7 8 5-8 5V7Z" />
+            </svg>
+          )}
+        </button>
+        <button className="audio-edit-trigger" type="button" onClick={onEdit}>
+          <span className="audio-title-row">
+            <strong>{audio.fileName}</strong>
+            <span>{formatDuration(audio.durationSec)}</span>
+            {audio.sequence !== null ? <span className="sequence">#{audio.sequence}</span> : null}
+          </span>
+          <span className="audio-meta-line">
+            <time dateTime={audio.recordedDate}>{audio.recordedDate.replaceAll('-', '/')}</time>
+            {audio.tags.length > 0 ? <span>{audio.tags.map((tag) => `#${tag}`).join(' ')}</span> : null}
+            {audio.memo ? <span>{audio.memo}</span> : null}
+          </span>
+        </button>
       </div>
-
-      {audio.tags.length > 0 ? (
-        <div className="audio-tags">
-          {audio.tags.map((tag) => <span key={tag}>{tag}</span>)}
-        </div>
-      ) : null}
-      {audio.memo ? <p className="audio-memo">{audio.memo}</p> : null}
 
       {playbackUrl ? (
         <audio className="audio-player" controls autoPlay src={playbackUrl} />
       ) : null}
-
-      <div className="audio-actions">
-        <button type="button" onClick={onPlay} disabled={isLoading || isDeleting}>
-          {isLoading ? '復号中…' : playbackUrl ? '再読み込み' : '再生'}
-        </button>
-        <button
-          className="danger-button"
-          type="button"
-          onClick={onDelete}
-          disabled={isDeleting || isLoading}
-        >
-          {isDeleting ? '削除中…' : '削除'}
-        </button>
-      </div>
     </article>
   )
 }

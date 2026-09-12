@@ -46,22 +46,14 @@ export default function Login({ onAuthenticated }: LoginProps) {
 
   return (
     <main className="auth-layout">
-      <section className="auth-card" aria-labelledby="login-title">
-        <div className="brand-mark" aria-hidden="true">
-          A
-        </div>
-        <p className="eyebrow">Private audio archive</p>
-        <h1 id="login-title">AnMemory</h1>
-        <p className="description">
-          保存した音声を見るには、マスターパスワードを入力してください。
-        </p>
-
+      <section className="auth-card" aria-label="ログイン">
         <form onSubmit={handleSubmit}>
-          <label htmlFor="password">マスターパスワード</label>
           <input
             id="password"
             name="password"
             type="password"
+            aria-label="マスターパスワード"
+            placeholder="マスターパスワード"
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -78,8 +70,6 @@ export default function Login({ onAuthenticated }: LoginProps) {
             {isSubmitting ? '確認中…' : 'ログイン'}
           </button>
         </form>
-
-        <p className="security-note">セッションは1時間で自動的に終了します。</p>
       </section>
     </main>
   )

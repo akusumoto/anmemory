@@ -136,6 +136,24 @@ export async function downloadAudio(id: string): Promise<Blob> {
   return response.blob()
 }
 
+export async function updateAudioMetadata(
+  id: string,
+  metadata: Pick<AudioMetadata, 'recordedDate' | 'tags' | 'memo'>,
+): Promise<AudioListItem> {
+  const response = await fetch(`/api/audio/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(metadata),
+  })
+  if (!response.ok) throw new ApiError(response.status, await readError(response))
+  const body = (await response.json()) as { item: AudioListItem }
+  return body.item
+}
+
 export async function deleteAudio(id: string): Promise<void> {
   const response = await fetch(`/api/audio/${encodeURIComponent(id)}`, {
     method: 'DELETE',

@@ -53,7 +53,7 @@ const metadata: AudioMetadata = {
   uploadedAt: '2026-09-12T00:00:00.000Z',
 }
 
-test('audio route uploads, lists, decrypts, and deletes an object', async () => {
+test('audio route uploads, lists, updates, decrypts, and deletes an object', async () => {
   const bucket = new MemoryBucket()
   const env = {
     AUDIO_BUCKET: bucket,
@@ -76,6 +76,55 @@ test('audio route uploads, lists, decrypts, and deletes an object', async () => 
   const list = await handleAudio(new Request('https://example.test/api/audio'), env)
   assert.equal(list.status, 200)
   assert.deepEqual((await list.json() as { items: unknown[] }).items, [{ id, ...metadata }])
+
+  const invalidUpdate = await handleAudio(
+    new Request(`https://example.test/api/audio/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recordedDate: '2026-02-30',
+        tags: [],
+        memo: '',
+      }),
+    }),
+    env,
+    id,
+  )
+  assert.equal(invalidUpdate.status, 400)
+
+  const update = await handleAudio(
+    new Request(`https://example.test/api/audio/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recordedDate: '2026-09-13',
+        tags: ['updated'],
+        memo: 'updated memo',
+      }),
+    }),
+    env,
+    id,
+  )
+  assert.equal(update.status, 200)
+  assert.deepEqual((await update.json() as { item: unknown }).item, {
+    id,
+    ...metadata,
+    recordedDate: '2026-09-13',
+    tags: ['updated'],
+    memo: 'updated memo',
+  })
+
+  const updatedList = await handleAudio(
+    new Request('https://example.test/api/audio'),
+    env,
+  )
+  assert.deepEqual((await updatedList.json() as { items: unknown[] }).items, [{
+    id,
+    ...metadata,
+    recordedDate: '2026-09-13',
+    tags: ['updated'],
+    memo: 'updated memo',
+  }])
 
   const download = await handleAudio(
     new Request(`https://example.test/api/audio/${id}`),

@@ -22,6 +22,21 @@ function objectKey(id: string): string | null {
   return UUID_PATTERN.test(id) ? `${AUDIO_PREFIX}${id}.bin` : null
 }
 
+function validDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/u)
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
+}
+
 async function getRange(
   bucket: R2Bucket,
   key: string,
@@ -158,6 +173,65 @@ async function getAudio(id: string, env: AppEnv): Promise<Response> {
   }
 }
 
+async function updateAudio(
+  request: Request,
+  id: string,
+  env: AppEnv,
+): Promise<Response> {
+  const key = objectKey(id)
+  if (!key) return jsonResponse({ error: 'Not Found' }, { status: 404 })
+
+  let update: { recordedDate?: unknown; tags?: unknown; memo?: unknown }
+  try {
+    update = (await request.json()) as {
+      recordedDate?: unknown
+      tags?: unknown
+      memo?: unknown
+    }
+  } catch {
+    return jsonResponse({ error: 'Invalid metadata' }, { status: 400 })
+  }
+  if (
+    !validDateOnly(update.recordedDate) ||
+    !Array.isArray(update.tags) ||
+    !update.tags.every((tag) => typeof tag === 'string') ||
+    typeof update.memo !== 'string'
+  ) {
+    return jsonResponse({ error: 'Invalid metadata' }, { status: 400 })
+  }
+
+  try {
+    const object = await env.AUDIO_BUCKET.get(key)
+    if (!object) return jsonResponse({ error: 'Not Found' }, { status: 404 })
+    const opened = await openAudioObject(
+      new Uint8Array(await object.arrayBuffer()),
+      env.ENCRYPTION_KEY,
+    )
+    const metadata = {
+      ...opened.metadata,
+      recordedDate: update.recordedDate,
+      tags: update.tags,
+      memo: update.memo,
+    }
+    const sealed = await sealAudioObjectParts(
+      opened.audio,
+      metadata,
+      env.ENCRYPTION_KEY,
+    )
+    const encryptedBlob = new Blob(
+      [sealed.prefix, sealed.header, sealed.metadataCiphertext, sealed.audioCiphertext],
+      { type: 'application/octet-stream' },
+    )
+    await env.AUDIO_BUCKET.put(key, encryptedBlob, {
+      httpMetadata: { contentType: 'application/octet-stream' },
+      customMetadata: { version: '1' },
+    })
+    return jsonResponse({ item: { id, ...metadata } })
+  } catch {
+    return jsonResponse({ error: 'Unable to update audio' }, { status: 503 })
+  }
+}
+
 async function deleteAudio(id: string, env: AppEnv): Promise<Response> {
   const key = objectKey(id)
   if (!key) return jsonResponse({ error: 'Not Found' }, { status: 404 })
@@ -184,8 +258,9 @@ export async function handleAudio(
       return methodNotAllowed('GET, POST')
     }
     if (request.method === 'GET') return getAudio(id, env)
+    if (request.method === 'PUT') return updateAudio(request, id, env)
     if (request.method === 'DELETE') return deleteAudio(id, env)
-    return methodNotAllowed('GET, DELETE')
+    return methodNotAllowed('GET, PUT, DELETE')
   } catch {
     return jsonResponse({ error: 'Unable to process audio request' }, { status: 503 })
   }

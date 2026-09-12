@@ -12,24 +12,11 @@
 
 .auth-card {
   width: min(100%, 420px);
-  padding: 32px 24px 24px;
+  padding: 24px;
   border: 1px solid var(--line);
   border-radius: 22px;
   background: var(--surface);
   box-shadow: 0 20px 60px rgb(26 55 42 / 8%);
-}
-
-.brand-mark {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 24px;
-  border-radius: 15px;
-  color: #fff;
-  background: var(--accent);
-  font-size: 22px;
-  font-weight: 800;
 }
 
 .eyebrow {
@@ -53,12 +40,6 @@ h1 {
   font-size: clamp(29px, 9vw, 38px);
   line-height: 1.05;
   letter-spacing: -0.035em;
-}
-
-.description {
-  margin-bottom: 28px;
-  color: var(--muted);
-  line-height: 1.65;
 }
 
 form {
@@ -88,13 +69,6 @@ input {
   color: var(--danger);
   font-size: 14px;
   line-height: 1.5;
-}
-
-.security-note {
-  margin: 20px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: center;
 }
 
 .status-layout {
@@ -132,6 +106,30 @@ input {
   font-size: 28px;
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  width: 40px;
+  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .secondary-button {
   min-height: 40px;
   padding: 0 14px;
@@ -155,11 +153,31 @@ input {
 }
 
 .upload-card {
-  margin-top: 28px;
   padding: 24px;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: var(--surface);
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  overflow-y: auto;
+  padding: max(24px, env(safe-area-inset-top)) 16px 24px;
+  background: rgb(18 31 25 / 48%);
+}
+
+.upload-dialog {
+  width: min(100%, 688px);
+}
+
+.dialog-close-button {
+  display: block;
+  margin: 0 0 8px auto;
 }
 
 .section-heading {
@@ -172,16 +190,6 @@ input {
 
 .section-heading h2 {
   margin: 0;
-}
-
-.local-badge {
-  flex: none;
-  border-radius: 999px;
-  padding: 5px 9px;
-  color: var(--accent);
-  background: #e4f1eb;
-  font-size: 11px;
-  font-weight: 800;
 }
 
 .file-picker {
@@ -356,6 +364,13 @@ input {
   margin: 16px 0;
 }
 
+.upload-status {
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .conversion-result {
   display: grid;
   gap: 4px;
@@ -381,33 +396,15 @@ input {
   background: var(--surface);
 }
 
-.audio-count {
-  flex: none;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .list-status {
   margin: 0;
   color: var(--muted);
   font-size: 14px;
 }
 
-.audio-groups,
 .audio-items {
   display: grid;
   gap: 12px;
-}
-
-.audio-group + .audio-group {
-  margin-top: 24px;
-}
-
-.audio-group h3 {
-  margin: 0 0 9px;
-  color: var(--accent-dark);
-  font-size: 14px;
 }
 
 .audio-item {
@@ -418,33 +415,82 @@ input {
   background: #fbfdfc;
 }
 
-.audio-item-heading,
-.audio-item-heading > div,
-.audio-actions {
+.audio-item-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.audio-play-button {
+  width: 32px;
+  min-height: 32px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 0 0 2px;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.audio-play-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentcolor;
+}
+
+.audio-edit-trigger {
+  min-width: 0;
+  min-height: 38px;
+  display: grid;
+  gap: 5px;
+  padding: 4px 6px;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+}
+
+.audio-edit-trigger:hover {
+  background: #eef4f0;
+}
+
+.audio-title-row,
+.audio-meta-line {
+  min-width: 0;
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
-.audio-item-heading {
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.audio-item-heading > div {
-  min-width: 0;
-  gap: 9px;
-}
-
-.audio-item-heading strong {
+.audio-title-row strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.audio-item-heading span {
-  flex: none;
+.audio-title-row > span,
+.audio-meta-line {
   color: var(--muted);
   font-size: 12px;
+}
+
+.audio-title-row > span {
+  flex: none;
+}
+
+.audio-meta-line {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.audio-meta-line > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audio-meta-line time {
+  flex: none;
 }
 
 .sequence {
@@ -454,44 +500,66 @@ input {
   font-weight: 800;
 }
 
-.audio-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 10px;
-}
-
-.audio-tags span {
-  border-radius: 999px;
-  padding: 4px 7px;
-  color: var(--accent-dark);
-  background: #e4f1eb;
-  font-size: 11px;
-}
-
-.audio-memo {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
 .audio-player {
   width: 100%;
   height: 42px;
   margin-top: 12px;
 }
 
-.audio-actions {
-  gap: 8px;
-  margin-top: 12px;
+.audio-edit-card {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
 }
 
-.audio-actions button {
-  min-height: 40px;
-  padding: 0 14px;
+.edit-heading {
+  align-items: center;
+}
+
+.edit-file-name {
+  max-width: 100%;
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--muted);
   font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-form,
+.edit-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.edit-form {
+  gap: 16px;
+}
+
+.edit-form input,
+.edit-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid #b7c7bf;
+  border-radius: 10px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: #fff;
+  font: inherit;
+  font-weight: 400;
+}
+
+.edit-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.edit-delete-button {
+  width: 100%;
+  margin-top: 24px;
 }
 
 .danger-button {
