@@ -367,7 +367,7 @@ git commit -m "Initial AnMemory project"
 
 次の機能を実装している。
 
-- PBKDF2-HMAC-SHA-256によるマスターパスワード検証
+- PBKDF2-HMAC-SHA-256（100,000 iterations）によるマスターパスワード検証
 - HMAC-SHA-256署名付きの1時間セッションCookie
 - `HttpOnly`、`Secure`、`SameSite=Strict`、`Path=/`
 - ログイン、セッション確認、ログアウトAPI
@@ -397,6 +397,8 @@ npx wrangler secret put MASTER_PASSWORD_VERIFIER
 npx wrangler secret put SESSION_SECRET
 npx wrangler secret put ENCRYPTION_KEY
 ```
+
+Cloudflare WorkersはPBKDF2を最大100,000 iterationsに制限しているため、`MASTER_PASSWORD_VERIFIER` は必ずこのリポジトリの生成コマンドで作成する。より大きいiteration countはローカルで動作しても本番Workerでは拒否される。
 
 Rate Limiting BindingはCloudflare上で動作する。ローカル開発では回数制限が強制されないため、デプロイ前後に実環境でも確認する。`wrangler.jsonc` の `namespace_id` はCloudflareアカウント内で一意にし、既に `1001` を使用している場合は別の正整数へ変更する。
 

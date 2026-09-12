@@ -33,3 +33,10 @@ test('PBKDF2 verifier accepts only the correct password', async () => {
 test('malformed verifier is rejected', async () => {
   await assert.rejects(() => verifyPassword('password', 'not-a-verifier'))
 })
+
+test('verifier above the Cloudflare Workers PBKDF2 limit is rejected', async () => {
+  const verifier = await createVerifier('password')
+  const unsupportedVerifier = verifier.replace('$100000$', '$100001$')
+
+  await assert.rejects(() => verifyPassword('password', unsupportedVerifier))
+})

@@ -1,7 +1,8 @@
 import { constantTimeEqual, decodeBase64Url } from './encoding.ts'
 
 const MIN_ITERATIONS = 100_000
-const MAX_ITERATIONS = 2_000_000
+// Keep this aligned with the maximum accepted by the Workers runtime.
+const MAX_ITERATIONS = 100_000
 const MIN_SALT_BYTES = 16
 const EXPECTED_HASH_BYTES = 32
 

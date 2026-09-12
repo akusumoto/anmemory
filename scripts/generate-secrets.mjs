@@ -1,6 +1,7 @@
 import { pbkdf2Sync, randomBytes } from 'node:crypto'
 
-const ITERATIONS = 600_000
+// Cloudflare Workers rejects PBKDF2 operations above 100,000 iterations.
+const ITERATIONS = 100_000
 
 function readHidden(prompt) {
   if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== 'function') {

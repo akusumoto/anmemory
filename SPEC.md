@@ -149,7 +149,7 @@ ENCRYPTION_KEY
 PBKDF2-HMAC-SHA-256
 ```
 
-saltを使用する。
+Cloudflare Workersの実行上限に合わせて100,000 iterationsとし、saltを使用する。
 
 ### 4.3 パスワード強度
 
