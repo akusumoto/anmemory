@@ -14,9 +14,16 @@ interface M4aOptions {
 const textEncoder = new TextEncoder()
 
 function concat(...parts: Uint8Array[]): Uint8Array {
-  const result = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0))
+  return concatParts(parts)
+}
+
+function concatParts(parts: Iterable<Uint8Array>): Uint8Array {
+  const collected = Array.from(parts)
+  const result = new Uint8Array(
+    collected.reduce((sum, part) => sum + part.length, 0),
+  )
   let offset = 0
-  for (const part of parts) {
+  for (const part of collected) {
     result.set(part, offset)
     offset += part.length
   }
@@ -63,6 +70,18 @@ function fullBox(
   ...payload: Uint8Array[]
 ): Uint8Array {
   return box(type, bytes(version), u24(flags), ...payload)
+}
+
+function fullBoxFromPayload(
+  type: string,
+  version: number,
+  flags: number,
+  payload: Iterable<Uint8Array>,
+): Uint8Array {
+  const bodyParts = [bytes(version), u24(flags)]
+  for (const part of payload) bodyParts.push(part)
+  const body = concatParts(bodyParts)
+  return concat(u32(body.length + 8), text(type), body)
 }
 
 function descriptor(tag: number, payload: Uint8Array): Uint8Array {
@@ -138,13 +157,11 @@ function timeToSample(samples: AacSample[]): Uint8Array {
       entries.push({ count: 1, duration: sample.duration })
     }
   }
-  return fullBox(
-    'stts',
-    0,
-    0,
-    u32(entries.length),
-    ...entries.flatMap((entry) => [u32(entry.count), u32(entry.duration)]),
-  )
+  const payload = [u32(entries.length)]
+  for (const entry of entries) {
+    payload.push(u32(entry.count), u32(entry.duration))
+  }
+  return fullBoxFromPayload('stts', 0, 0, payload)
 }
 
 const MATRIX = concat(
@@ -189,10 +206,11 @@ function movieBox(options: M4aOptions, chunkOffset: number): Uint8Array {
   const stsc = fullBox(
     'stsc', 0, 0, u32(1), u32(1), u32(options.samples.length), u32(1),
   )
-  const stsz = fullBox(
-    'stsz', 0, 0, u32(0), u32(options.samples.length),
-    ...options.samples.map((sample) => u32(sample.data.length)),
-  )
+  const sampleSizes = [u32(0), u32(options.samples.length)]
+  for (const sample of options.samples) {
+    sampleSizes.push(u32(sample.data.length))
+  }
+  const stsz = fullBoxFromPayload('stsz', 0, 0, sampleSizes)
   const stco = fullBox('stco', 0, 0, u32(1), u32(chunkOffset))
   const stbl = box(
     'stbl',
@@ -231,11 +249,11 @@ export function buildM4a(options: M4aOptions): Blob {
   moov = movieBox(options, chunkOffset)
   const mdatHeader = concat(u32(mediaBytes + 8), text('mdat'))
 
-  const parts = [
-    ftyp,
-    moov,
-    mdatHeader,
-    ...options.samples.map((sample) => sample.data),
-  ].map((part) => part as unknown as BlobPart)
+  const parts: BlobPart[] = [ftyp, moov, mdatHeader].map(
+    (part) => part as unknown as BlobPart,
+  )
+  for (const sample of options.samples) {
+    parts.push(sample.data as unknown as BlobPart)
+  }
   return new Blob(parts, { type: 'audio/mp4' })
 }

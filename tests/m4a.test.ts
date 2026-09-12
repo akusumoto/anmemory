@@ -29,3 +29,23 @@ test('M4A muxer creates ftyp, moov, and mdat with raw AAC samples', async () => 
   assert.equal(boxType(bytes, ftypSize + moovSize), 'mdat')
   assert.deepEqual(Array.from(bytes.slice(-7)), [...first, ...second])
 })
+
+test('M4A muxer handles twenty minutes of 48 kHz AAC samples', () => {
+  const sampleCount = Math.ceil((20 * 60 * 48_000) / 1_024)
+  const sampleData = Uint8Array.from([1])
+  const samples = Array.from({ length: sampleCount }, () => ({
+    data: sampleData,
+    duration: 1_024,
+  }))
+
+  const blob = buildM4a({
+    samples,
+    sampleRate: 48_000,
+    channels: 2,
+    bitrate: 96_000,
+    audioSpecificConfig: Uint8Array.from([0x11, 0x90]),
+  })
+
+  assert.equal(blob.type, 'audio/mp4')
+  assert.ok(blob.size > sampleCount)
+})
