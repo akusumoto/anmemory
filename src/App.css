@@ -468,6 +468,11 @@ input {
   white-space: nowrap;
 }
 
+.audio-title-row time {
+  font-size: 17px;
+  letter-spacing: 0.01em;
+}
+
 .audio-title-row > span,
 .audio-meta-line {
   color: var(--muted);

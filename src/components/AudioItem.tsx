@@ -25,6 +25,8 @@ export default function AudioItem({
   onEdit,
   onPlay,
 }: Props) {
+  const displayDate = audio.recordedDate.replaceAll('-', '/')
+
   return (
     <article className="audio-item">
       <div className="audio-item-heading">
@@ -44,12 +46,11 @@ export default function AudioItem({
         </button>
         <button className="audio-edit-trigger" type="button" onClick={onEdit}>
           <span className="audio-title-row">
-            <strong>{audio.fileName}</strong>
+            <strong><time dateTime={audio.recordedDate}>{displayDate}</time></strong>
             <span>{formatDuration(audio.durationSec)}</span>
             {audio.sequence !== null ? <span className="sequence">#{audio.sequence}</span> : null}
           </span>
           <span className="audio-meta-line">
-            <time dateTime={audio.recordedDate}>{audio.recordedDate.replaceAll('-', '/')}</time>
             {audio.tags.length > 0 ? <span>{audio.tags.map((tag) => `#${tag}`).join(' ')}</span> : null}
             {audio.memo ? <span>{audio.memo}</span> : null}
           </span>
