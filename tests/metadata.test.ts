@@ -52,6 +52,10 @@ test('recording filename yields a validated date and sequence', () => {
   })
   assert.equal(parseRecordingFileName('rec_20260230_1.wav'), null)
   assert.equal(parseRecordingFileName('other.wav'), null)
+  assert.deepEqual(parseRecordingFileName('rec_20260911_4.mp3'), {
+    recordedDate: '2026-09-11',
+    sequence: 4,
+  })
 })
 
 test('WAV INFO ICRD date is extracted even after an audio chunk', async () => {

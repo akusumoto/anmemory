@@ -12,6 +12,14 @@ import { jsonResponse, methodNotAllowed } from '../http.ts'
 
 const AUDIO_PREFIX = 'audio/'
 const PREFIX_BYTES = 12
+const SUPPORTED_AUDIO_TYPES = new Set([
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/aac',
+  'audio/ogg',
+  'audio/flac',
+  'audio/webm',
+])
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
 
 export interface AudioListItem extends AudioMetadata {
@@ -115,7 +123,7 @@ async function uploadAudio(request: Request, env: AppEnv): Promise<Response> {
   if (
     audioValue.size === 0 ||
     audioValue.size > MAX_AUDIO_BYTES ||
-    audioValue.type !== 'audio/mp4'
+    !SUPPORTED_AUDIO_TYPES.has(audioValue.type)
   ) {
     return jsonResponse({ error: 'Invalid audio file' }, { status: 400 })
   }
@@ -128,6 +136,7 @@ async function uploadAudio(request: Request, env: AppEnv): Promise<Response> {
   }
 
   try {
+    metadata = { ...metadata, mediaType: audioValue.type }
     const audio = new Uint8Array(await audioValue.arrayBuffer())
     const sealed = await sealAudioObjectParts(audio, metadata, env.ENCRYPTION_KEY)
     const encryptedBlob = new Blob(
@@ -164,7 +173,7 @@ async function getAudio(id: string, env: AppEnv): Promise<Response> {
     return new Response(opened.audio, {
       headers: {
         'Cache-Control': 'no-store',
-        'Content-Type': 'audio/mp4',
+        'Content-Type': opened.metadata.mediaType ?? 'audio/mp4',
         'Content-Length': String(opened.audio.length),
       },
     })

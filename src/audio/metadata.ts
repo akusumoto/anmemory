@@ -11,6 +11,7 @@ export interface AudioMetadata {
   tags: string[]
   memo: string
   uploadedAt: string
+  mediaType?: string
 }
 
 const MAX_METADATA_CHUNK_BYTES = 1024 * 1024
@@ -106,7 +107,7 @@ export function parseRecordingFileName(fileName: string): {
   recordedDate: string
   sequence: number
 } | null {
-  const match = fileName.match(/^rec_(\d{4})(\d{2})(\d{2})_(\d+)\.wav$/i)
+  const match = fileName.match(/^rec_(\d{4})(\d{2})(\d{2})_(\d+)\.[^.]+$/i)
   if (!match) return null
   const recordedDate = normalizeDate(`${match[1]}-${match[2]}-${match[3]}`)
   const sequence = Number(match[4])
@@ -120,11 +121,12 @@ export function normalizeTags(value: string): string[] {
 
 export async function createAudioMetadata(
   file: File,
-  wav: WavInfo,
+  audioInfo: Pick<WavInfo, 'durationSec'>,
   now = new Date(),
+  inspectWavMetadata = true,
 ): Promise<AudioMetadata> {
   const uploadedAt = now.toISOString()
-  const metadataDate = await extractWavRecordedDate(file)
+  const metadataDate = inspectWavMetadata ? await extractWavRecordedDate(file) : null
   const fileNameData = parseRecordingFileName(file.name)
 
   return {
@@ -136,7 +138,7 @@ export async function createAudioMetadata(
       : fileNameData
         ? 'filename'
         : 'upload',
-    durationSec: Math.round(wav.durationSec),
+    durationSec: Math.round(audioInfo.durationSec),
     sequence: fileNameData?.sequence ?? null,
     tags: [],
     memo: '',

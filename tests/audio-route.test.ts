@@ -51,7 +51,38 @@ const metadata: AudioMetadata = {
   tags: ['会議'],
   memo: 'route test',
   uploadedAt: '2026-09-12T00:00:00.000Z',
+  mediaType: 'audio/mp4',
 }
+
+test('compressed MP3 is stored unchanged and returned with its media type', async () => {
+  const bucket = new MemoryBucket()
+  const env = {
+    AUDIO_BUCKET: bucket,
+    ENCRYPTION_KEY: encodeBase64Url(new Uint8Array(32).fill(29)),
+  } as unknown as AppEnv
+  const original = new Uint8Array([73, 68, 51, 4, 0, 0])
+  const form = new FormData()
+  form.set('audio', new File([original], 'recording.mp3', { type: 'audio/mpeg' }))
+  form.set('metadata', JSON.stringify({
+    ...metadata,
+    fileName: 'recording.mp3',
+    mediaType: 'application/octet-stream',
+  }))
+
+  const upload = await handleAudio(
+    new Request('https://example.test/api/audio', { method: 'POST', body: form }),
+    env,
+  )
+  assert.equal(upload.status, 201)
+  const { id } = await upload.json() as { id: string }
+  const download = await handleAudio(
+    new Request(`https://example.test/api/audio/${id}`),
+    env,
+    id,
+  )
+  assert.equal(download.headers.get('Content-Type'), 'audio/mpeg')
+  assert.deepEqual(new Uint8Array(await download.arrayBuffer()), original)
+})
 
 test('audio route uploads, lists, updates, decrypts, and deletes an object', async () => {
   const bucket = new MemoryBucket()

@@ -2,7 +2,7 @@
 
 ## 現在の実装状況
 
-Phase 1〜6 を実装済みです。選択した WAV はブラウザ内で AAC-LC 96 kbps / Stereo の M4A に変換され、録音日、連番、音声長、タグ、メモ、選択日時を含むメタデータとともにWorkerへ送信されます。Workerは音声とメタデータをEnvelope Encryptionで暗号化し、Private R2へ保存します。元のWAVはサーバーへ送信されません。
+Phase 1〜6 を実装済みです。選択した WAV はブラウザ内で AAC-LC 96 kbps / Stereo の M4A に変換されます。M4A、MP3などの圧縮済み音声は変換せず、そのままWorkerへ送信されます。Workerは音声とメタデータをEnvelope Encryptionで暗号化し、Private R2へ保存します。元のWAVはサーバーへ送信されません。
 
 対応する WAV は RIFF/WAVE の mono または stereo です。PCM 整数（8 / 16 / 24 / 32 bit）と IEEE Float（32 bit）を読み込み、mono は stereo に複製します。WAV 全体を一括で `ArrayBuffer` 化せず、`Blob.slice()` で 16,384 frame ずつ読み取ります。
 
@@ -14,7 +14,7 @@ Phase 1〜6 を実装済みです。選択した WAV はブラウザ内で AAC-L
 npm run dev
 ```
 
-ログイン後は音声一覧を表示します。右上の「アップロード」から WAV を選択して同名の実行ボタンを押すと、M4Aへの変換と暗号化アップロードを連続して行います。処理中は「変換中」「アップロード中」の段階と、変換進捗・キャンセル操作を表示します。
+ログイン後は音声一覧を表示します。右上の「アップロード」から音声ファイルを選択します。WAVはM4Aへの変換後に、M4A、MP3、AAC、Ogg、Opus、FLAC、WebMは変換せずに暗号化アップロードします。WAVの処理中は「変換中」「アップロード中」の段階と、変換進捗・キャンセル操作を表示します。
 
 録音日は BWF `bext` の OriginationDate、RIFF `LIST/INFO` の `ICRD`、`rec_YYYYMMDD_N.wav` 形式のファイル名、選択日の順で決定します。画面では取得元を表示し、タグはカンマ・読点・改行区切りで入力できます。
 

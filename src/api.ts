@@ -114,8 +114,9 @@ export async function uploadAudio(
   metadata: AudioMetadata,
 ): Promise<string> {
   const form = new FormData()
-  form.set('audio', audio, 'audio.m4a')
-  form.set('metadata', JSON.stringify(metadata))
+  const mediaType = audio.type || metadata.mediaType || 'application/octet-stream'
+  form.set('audio', audio, metadata.fileName)
+  form.set('metadata', JSON.stringify({ ...metadata, mediaType }))
   const response = await fetch('/api/audio', {
     method: 'POST',
     credentials: 'same-origin',
@@ -130,7 +131,7 @@ export async function uploadAudio(
 export async function downloadAudio(id: string): Promise<Blob> {
   const response = await fetch(`/api/audio/${encodeURIComponent(id)}`, {
     credentials: 'same-origin',
-    headers: { Accept: 'audio/mp4' },
+    headers: { Accept: 'audio/*' },
   })
   if (!response.ok) throw new ApiError(response.status, await readError(response))
   return response.blob()

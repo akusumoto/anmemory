@@ -25,6 +25,7 @@ export interface AudioMetadata {
   tags: string[]
   memo: string
   uploadedAt: string
+  mediaType?: string
 }
 
 interface ContainerHeader {
@@ -106,6 +107,9 @@ function validMetadata(value: unknown): value is AudioMetadata {
     Array.isArray(metadata.tags) &&
     metadata.tags.every((tag) => typeof tag === 'string') &&
     typeof metadata.memo === 'string' &&
+    (metadata.mediaType === undefined ||
+      (typeof metadata.mediaType === 'string' &&
+        /^audio\/[a-z0-9.+-]+$/iu.test(metadata.mediaType))) &&
     typeof metadata.uploadedAt === 'string' &&
     Number.isFinite(Date.parse(metadata.uploadedAt))
   )
