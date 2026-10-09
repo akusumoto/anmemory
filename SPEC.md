@@ -15,14 +15,14 @@
 - 録音日は内部メタデータ、`rec_YYYYMMDD_N.wav` 形式のファイル名、ファイル選択日時の順で決定し、存在しない日付は採用しない。
 - ファイル名が想定形式に一致した場合は `N` を `sequence` として保持する。録音日が内部メタデータ由来でも連番はファイル名から取得する。
 - `durationSec` はWAVのframe数とsample rateから算出して整数秒へ丸める。
-- タグはカンマ、読点、改行で分割し、空要素と重複を除去する。メモは自由入力とする。
+- タグはカンマ、読点、改行で分割し、空要素と重複を除去する。タグは20個まで、メモは200文字までとし、超過した保存はAPIで400として拒否する。
 - `uploadedAt` はファイル選択時刻のISO 8601文字列として保持する。Phase 5 単体ではメタデータをサーバーへ送信しない。
 
 ## Phase 6 実装注記
 
 - `POST /api/audio` は変換済みM4Aとメタデータをmultipart/form-dataで受信し、50 MiB上限と入力形式を検査後、Envelope Encryptionを適用して `audio/{uuid}.bin` へ保存する。
 - 暗号化コンテナはheader、暗号化メタデータ、暗号化音声をBlob partsとしてR2へ渡し、暗号文全体をさらに連結コピーしない。
-- `GET /api/audio` はR2 Range Readでprefix、header、暗号化メタデータだけを取得・復号する。音声暗号文は一覧取得時に読み込まない。
+- `GET /api/audio` は `list({ include: ['customMetadata'] })` で取得したR2 custom metadata内の暗号化メタデータを復号する。custom metadataを持たない旧Objectのみ、R2 Range Readでprefix、header、暗号化メタデータを取得・復号する。音声暗号文は一覧取得時に読み込まない。
 - 一覧は `recordedDate DESC`、同日の `sequence ASC`、補助順として `uploadedAt DESC` で並べる。
 - `GET /api/audio/:id` は対象Objectを復号し、保存時の音声Content-Typeと `Cache-Control: no-store` を付けて返す。既存データで形式情報がない場合は `audio/mp4` とする。
 - `DELETE /api/audio/:id` は存在確認後に対象Objectを削除する。UIでは実行前に確認する。
@@ -683,6 +683,8 @@ encryptedAudio              AES-256-GCM ciphertext + authentication tag
 
 headerには `version`、`algorithm`、各IV、暗号化済みFile Key、各暗号文長だけを格納する。元ファイル名・録音日・タグ・メモなどは格納しない。
 
+一覧取得を高速化するため、同じheaderと暗号化メタデータをbase64urlでR2 custom metadata（`version`、`header`、`metadata`）にも格納する。平文は格納しない。R2 custom metadataの上限（合計8,192 bytes）を超える場合は保存を拒否する。
+
 ---
 
 ## 19. API
@@ -768,8 +770,8 @@ R2接続に失敗した場合:
 
 ```text
 1. Session確認
-2. R2 Object一覧取得
-3. メタデータ復号
+2. R2 Object一覧取得（custom metadataを含む）
+3. メタデータ復号（custom metadataがない旧ObjectはRange Read）
 4. 一覧JSON生成
 5. クライアントへ返却
 ```

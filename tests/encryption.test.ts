@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   type AudioMetadata,
+  MetadataLimitError,
   openAudioMetadata,
+  openCustomMetadata,
   openAudioObject,
   readEncryptedHeaderLength,
   readEncryptedObjectLayout,
@@ -69,4 +71,19 @@ test('tampering and the wrong master key are rejected', async () => {
 
   await assert.rejects(() => openAudioObject(tampered, secret))
   await assert.rejects(() => openAudioObject(sealed, wrongSecret))
+})
+
+test('custom metadata decrypts without plaintext and enforces size limits', async () => {
+  const sealed = await sealAudioObjectParts(audio, metadata, secret)
+  const serialized = JSON.stringify(sealed.customMetadata)
+  assert.equal(serialized.includes('confidential metadata marker'), false)
+  assert.equal(serialized.includes(metadata.fileName), false)
+  assert.deepEqual(await openCustomMetadata(sealed.customMetadata, secret), metadata)
+  assert.equal(await openCustomMetadata({ version: '1' }, secret), null)
+  await assert.rejects(() => openCustomMetadata(sealed.customMetadata, wrongSecret))
+
+  await assert.rejects(
+    () => sealAudioObjectParts(audio, { ...metadata, tags: ['あ'.repeat(3000)] }, secret),
+    MetadataLimitError,
+  )
 })

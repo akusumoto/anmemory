@@ -1,12 +1,15 @@
 import type { AppEnv } from '../env.ts'
 import {
   MAX_AUDIO_BYTES,
+  MetadataLimitError,
   openAudioMetadata,
   openAudioObject,
+  openCustomMetadata,
   readEncryptedHeaderLength,
   readEncryptedObjectLayout,
   sealAudioObjectParts,
   type AudioMetadata,
+  type SealedAudioObjectParts,
 } from '../encrypted-audio.ts'
 import { jsonResponse, methodNotAllowed } from '../http.ts'
 
@@ -76,27 +79,57 @@ async function readMetadata(
   return openAudioMetadata(metadataPrefix, encryptionSecret)
 }
 
+async function putSealedAudio(
+  bucket: R2Bucket,
+  key: string,
+  sealed: SealedAudioObjectParts,
+): Promise<void> {
+  const encryptedBlob = new Blob(
+    [
+      sealed.prefix,
+      sealed.header,
+      sealed.metadataCiphertext,
+      sealed.audioCiphertext,
+    ],
+    { type: 'application/octet-stream' },
+  )
+  await bucket.put(key, encryptedBlob, {
+    httpMetadata: { contentType: 'application/octet-stream' },
+    customMetadata: sealed.customMetadata,
+  })
+}
+
 async function listAudio(env: AppEnv): Promise<Response> {
-  const items: AudioListItem[] = []
+  const pending: Promise<AudioListItem>[] = []
   let cursor: string | undefined
 
   do {
-    const page = await env.AUDIO_BUCKET.list({ prefix: AUDIO_PREFIX, cursor })
+    const page = await env.AUDIO_BUCKET.list({
+      prefix: AUDIO_PREFIX,
+      cursor,
+      include: ['customMetadata'],
+    })
     for (const object of page.objects) {
       const id = object.key.slice(AUDIO_PREFIX.length, -4)
       const key = objectKey(id)
       if (!key || key !== object.key) continue
-      const metadata = await readMetadata(
-        env.AUDIO_BUCKET,
-        key,
-        object.size,
-        env.ENCRYPTION_KEY,
-      )
-      items.push({ id, ...metadata })
+      pending.push((async () => {
+        // Objects stored before custom metadata existed fall back to Range Reads.
+        const metadata =
+          (await openCustomMetadata(object.customMetadata, env.ENCRYPTION_KEY)) ??
+          (await readMetadata(
+            env.AUDIO_BUCKET,
+            key,
+            object.size,
+            env.ENCRYPTION_KEY,
+          ))
+        return { id, ...metadata }
+      })())
     }
     cursor = page.truncated ? page.cursor : undefined
   } while (cursor)
 
+  const items = await Promise.all(pending)
   items.sort((left, right) => {
     const dateOrder = right.recordedDate.localeCompare(left.recordedDate)
     if (dateOrder !== 0) return dateOrder
@@ -139,22 +172,13 @@ async function uploadAudio(request: Request, env: AppEnv): Promise<Response> {
     metadata = { ...metadata, mediaType: audioValue.type }
     const audio = new Uint8Array(await audioValue.arrayBuffer())
     const sealed = await sealAudioObjectParts(audio, metadata, env.ENCRYPTION_KEY)
-    const encryptedBlob = new Blob(
-      [
-        sealed.prefix,
-        sealed.header,
-        sealed.metadataCiphertext,
-        sealed.audioCiphertext,
-      ],
-      { type: 'application/octet-stream' },
-    )
     const id = crypto.randomUUID()
-    await env.AUDIO_BUCKET.put(`${AUDIO_PREFIX}${id}.bin`, encryptedBlob, {
-      httpMetadata: { contentType: 'application/octet-stream' },
-      customMetadata: { version: '1' },
-    })
+    await putSealedAudio(env.AUDIO_BUCKET, `${AUDIO_PREFIX}${id}.bin`, sealed)
     return jsonResponse({ id }, { status: 201 })
-  } catch {
+  } catch (error) {
+    if (error instanceof MetadataLimitError) {
+      return jsonResponse({ error: error.message }, { status: 400 })
+    }
     return jsonResponse({ error: 'Unable to store audio' }, { status: 503 })
   }
 }
@@ -227,16 +251,12 @@ async function updateAudio(
       metadata,
       env.ENCRYPTION_KEY,
     )
-    const encryptedBlob = new Blob(
-      [sealed.prefix, sealed.header, sealed.metadataCiphertext, sealed.audioCiphertext],
-      { type: 'application/octet-stream' },
-    )
-    await env.AUDIO_BUCKET.put(key, encryptedBlob, {
-      httpMetadata: { contentType: 'application/octet-stream' },
-      customMetadata: { version: '1' },
-    })
+    await putSealedAudio(env.AUDIO_BUCKET, key, sealed)
     return jsonResponse({ item: { id, ...metadata } })
-  } catch {
+  } catch (error) {
+    if (error instanceof MetadataLimitError) {
+      return jsonResponse({ error: error.message }, { status: 400 })
+    }
     return jsonResponse({ error: 'Unable to update audio' }, { status: 503 })
   }
 }

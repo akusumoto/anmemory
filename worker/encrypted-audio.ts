@@ -15,6 +15,9 @@ const PREFIX_BYTES = MAGIC.length + 4
 const MAX_HEADER_BYTES = 16 * 1024
 const MAX_METADATA_BYTES = 64 * 1024
 export const MAX_AUDIO_BYTES = 50 * 1024 * 1024
+export const MAX_MEMO_LENGTH = 200
+export const MAX_TAGS = 20
+const MAX_CUSTOM_METADATA_BYTES = 8192
 
 export interface AudioMetadata {
   fileName: string
@@ -57,6 +60,14 @@ export interface SealedAudioObjectParts {
   header: Uint8Array
   metadataCiphertext: Uint8Array
   audioCiphertext: Uint8Array
+  customMetadata: Record<string, string>
+}
+
+export class MetadataLimitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'MetadataLimitError'
+  }
 }
 
 function concatenate(parts: Uint8Array[]): Uint8Array {
@@ -154,11 +165,18 @@ function parseHeader(container: Uint8Array): {
     throw new Error('Invalid encrypted object')
   }
 
+  return {
+    header: parseHeaderBytes(container.subarray(PREFIX_BYTES, headerEnd)),
+    headerEnd,
+  }
+}
+
+function parseHeaderBytes(headerBytes: Uint8Array): ContainerHeader {
   let parsedHeader: unknown
   try {
     parsedHeader = JSON.parse(
       new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(
-        container.subarray(PREFIX_BYTES, headerEnd),
+        headerBytes,
       ),
     )
   } catch {
@@ -167,8 +185,7 @@ function parseHeader(container: Uint8Array): {
   if (!validHeader(parsedHeader)) {
     throw new Error('Invalid encrypted object')
   }
-
-  return { header: parsedHeader, headerEnd }
+  return parsedHeader
 }
 
 export function readEncryptedHeaderLength(prefix: Uint8Array): number {
@@ -227,6 +244,12 @@ export async function sealAudioObjectParts(
   if (!validMetadata(metadata)) {
     throw new Error('Invalid audio metadata')
   }
+  if (metadata.memo.length > MAX_MEMO_LENGTH) {
+    throw new MetadataLimitError('Memo is too long')
+  }
+  if (metadata.tags.length > MAX_TAGS) {
+    throw new MetadataLimitError('Too many tags')
+  }
 
   const metadataBytes = new TextEncoder().encode(JSON.stringify(metadata))
   if (metadataBytes.length > MAX_METADATA_BYTES) {
@@ -260,11 +283,27 @@ export async function sealAudioObjectParts(
   prefix.set(MAGIC)
   new DataView(prefix.buffer).setUint32(MAGIC.length, headerBytes.length, false)
 
+  // Duplicate the encrypted metadata into R2 custom metadata so listing can
+  // read it via bucket.list() without fetching each object.
+  const customMetadata = {
+    version: '1',
+    header: encodeBase64Url(headerBytes),
+    metadata: encodeBase64Url(metadataCiphertext),
+  }
+  const customMetadataBytes = Object.entries(customMetadata).reduce(
+    (total, [key, value]) => total + key.length + value.length,
+    0,
+  )
+  if (customMetadataBytes > MAX_CUSTOM_METADATA_BYTES) {
+    throw new MetadataLimitError('Audio metadata is too large')
+  }
+
   return {
     prefix,
     header: headerBytes,
     metadataCiphertext,
     audioCiphertext,
+    customMetadata,
   }
 }
 
@@ -333,6 +372,22 @@ export async function openAudioMetadata(
       metadataCiphertext: containerPrefix.subarray(headerEnd, metadataEnd),
       audioCiphertext: new Uint8Array(),
     },
+    encryptionSecret,
+  )
+}
+
+export async function openCustomMetadata(
+  customMetadata: Record<string, string> | undefined,
+  encryptionSecret: string,
+): Promise<AudioMetadata | null> {
+  if (!customMetadata?.header || !customMetadata.metadata) return null
+  const header = parseHeaderBytes(decodeBase64Url(customMetadata.header))
+  const metadataCiphertext = decodeBase64Url(customMetadata.metadata)
+  if (metadataCiphertext.length !== header.metadataLength) {
+    throw new Error('Invalid encrypted metadata')
+  }
+  return decryptMetadata(
+    { header, metadataCiphertext, audioCiphertext: new Uint8Array() },
     encryptionSecret,
   )
 }

@@ -4,7 +4,7 @@ import {
   updateAudioMetadata,
   type AudioListItem,
 } from '../api'
-import { normalizeTags } from '../audio/metadata'
+import { MAX_MEMO_LENGTH, MAX_TAGS, normalizeTags } from '../audio/metadata'
 
 interface Props {
   audio: AudioListItem
@@ -24,12 +24,17 @@ export default function AudioEdit({ audio, onBack, onDeleted, onSaved }: Props) 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (isSaving || isDeleting) return
+    const tags = normalizeTags(tagText)
+    if (tags.length > MAX_TAGS) {
+      setError(`タグは${MAX_TAGS}個までにしてください。`)
+      return
+    }
     setIsSaving(true)
     setError('')
     try {
       onSaved(await updateAudioMetadata(audio.id, {
         recordedDate,
-        tags: normalizeTags(tagText),
+        tags,
         memo,
       }))
     } catch {
@@ -89,8 +94,10 @@ export default function AudioEdit({ audio, onBack, onDeleted, onSaved }: Props) 
           <textarea
             rows={5}
             value={memo}
+            maxLength={MAX_MEMO_LENGTH}
             onChange={(event) => setMemo(event.target.value)}
           />
+          <small>{memo.length}/{MAX_MEMO_LENGTH}文字</small>
         </label>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button type="submit" disabled={isSaving || isDeleting}>

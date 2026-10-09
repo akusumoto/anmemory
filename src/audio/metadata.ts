@@ -14,6 +14,9 @@ export interface AudioMetadata {
   mediaType?: string
 }
 
+export const MAX_MEMO_LENGTH = 200
+export const MAX_TAGS = 20
+
 const MAX_METADATA_CHUNK_BYTES = 1024 * 1024
 const MAX_CHUNKS_TO_SCAN = 10_000
 const textDecoder = new TextDecoder('utf-8')

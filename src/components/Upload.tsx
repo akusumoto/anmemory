@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AAC_BITRATE, convertWavToM4a, type ConversionResult, supportsAacEncoding } from '../audio/encoder.ts'
 import { isWavFile, passthroughMediaType, readBrowserAudioDuration } from '../audio/input.ts'
-import { createAudioMetadata, normalizeTags, type AudioMetadata, type RecordedDateSource } from '../audio/metadata.ts'
+import { createAudioMetadata, MAX_MEMO_LENGTH, MAX_TAGS, normalizeTags, type AudioMetadata, type RecordedDateSource } from '../audio/metadata.ts'
 import { inspectWav, type WavInfo } from '../audio/wav.ts'
 import { uploadAudio } from '../api.ts'
 
@@ -76,6 +76,10 @@ export default function Upload({ onUploaded }: { onUploaded: () => void }) {
 
   async function handleUpload() {
     if (!file || !metadata || isConverting || isUploading || storedId) return
+    if (metadata.tags.length > MAX_TAGS) {
+      setError(`タグは${MAX_TAGS}個までにしてください。`)
+      return
+    }
     setError('')
     let converted = result
     try {
@@ -124,8 +128,8 @@ export default function Upload({ onUploaded }: { onUploaded: () => void }) {
       {metadata ? <fieldset className="metadata-fields" disabled={isConverting || isUploading || Boolean(storedId)}>
         <legend>メタデータ</legend>
         <div className="recorded-date-row"><label><span>録音日</span><input type="date" value={metadata.recordedDate} readOnly /></label><small>{dateSourceLabels[metadata.recordedDateSource]}から取得</small></div>
-        <label><span>タグ</span><input type="text" value={tagText} placeholder="仕事, 会議" onChange={(event) => { const value = event.target.value; setTagText(value); setMetadata((current) => current ? { ...current, tags: normalizeTags(value) } : current) }} /><small>カンマ、読点、または改行で区切ります。</small></label>
-        <label><span>メモ</span><textarea rows={3} value={metadata.memo} placeholder="音声についてのメモ" onChange={(event) => { const memo = event.target.value; setMetadata((current) => current ? { ...current, memo } : current) }} /></label>
+        <label><span>タグ</span><input type="text" value={tagText} placeholder="仕事, 会議" onChange={(event) => { const value = event.target.value; setTagText(value); setMetadata((current) => current ? { ...current, tags: normalizeTags(value) } : current) }} /><small>カンマ、読点、または改行で区切ります（{MAX_TAGS}個まで）。</small></label>
+        <label><span>メモ</span><textarea rows={3} value={metadata.memo} maxLength={MAX_MEMO_LENGTH} placeholder="音声についてのメモ" onChange={(event) => { const memo = event.target.value; setMetadata((current) => current ? { ...current, memo } : current) }} /><small>{metadata.memo.length}/{MAX_MEMO_LENGTH}文字</small></label>
         <div className="metadata-preview"><span>長さ {metadata.durationSec}秒</span><span>連番 {metadata.sequence ?? 'なし'}</span><span>タグ {metadata.tags.length}件</span></div>
       </fieldset> : null}
 
