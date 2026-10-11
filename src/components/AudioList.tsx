@@ -103,7 +103,6 @@ export default function AudioList({ refreshKey }: Props) {
 
   return (
     <section className="audio-list-card" aria-label="音声一覧">
-      {loading ? <p className="list-status">一覧を復号しています…</p> : null}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {!loading && !error && items.length === 0 ? (
         <p className="list-status">保存された音声はありません。</p>
